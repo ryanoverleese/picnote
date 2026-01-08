@@ -4,15 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Receipt Captioner</title>
-  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/react.production.min.js"></script>
-  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
@@ -23,7 +27,7 @@
 
   <script type="text/babel">
     const { useState, useRef } = React;
-    const { Upload, Eye, Download, X } = lucide;
+    const { Upload, Eye, Download, X } = window.lucide;
 
     function ReceiptCaptioner() {
       const [selectedImage, setSelectedImage] = useState(null);
@@ -45,29 +49,24 @@
         }
       };
 
-      const handleCaptureCamera = async () => {
-        try {
-          const input = document.createElement('input');
-          input.type = 'file';
-          input.accept = 'image/*';
-          input.capture = 'environment';
-          input.onchange = (e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onload = (event) => {
-                setSelectedImage(event.target.result);
-                setPreview(false);
-                setCaption('');
-              };
-              reader.readAsDataURL(file);
-            }
-          };
-          input.click();
-        } catch (err) {
-          console.log('Camera not available, using file input');
-          fileInputRef.current?.click();
-        }
+      const handleCaptureCamera = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.capture = 'environment';
+        input.onchange = (e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              setSelectedImage(event.target.result);
+              setPreview(false);
+              setCaption('');
+            };
+            reader.readAsDataURL(file);
+          }
+        };
+        input.click();
       };
 
       const drawCaptionedImage = (canvas) => {
@@ -79,20 +78,16 @@
           canvas.width = img.width;
           canvas.height = img.height;
 
-          // Draw original image
           ctx.drawImage(img, 0, 0);
 
-          // Caption styling
           const fontSize = Math.max(20, img.width / 20);
           const padding = Math.max(12, img.width / 40);
           const lineHeight = fontSize * 1.4;
 
-          // Setup text
           ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
           ctx.fillStyle = 'white';
           ctx.textAlign = 'left';
 
-          // Calculate text dimensions and wrap
           const maxWidth = img.width - padding * 2;
           const words = caption.split(' ');
           const lines = [];
@@ -113,11 +108,9 @@
           const textBlockHeight = lines.length * lineHeight + padding * 2;
           const bgY = img.height - textBlockHeight;
 
-          // Draw semi-transparent background
           ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
           ctx.fillRect(0, bgY, img.width, textBlockHeight);
 
-          // Draw text
           ctx.fillStyle = 'white';
           lines.forEach((line, index) => {
             ctx.fillText(
@@ -157,7 +150,6 @@
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
 
-            // Reset form
             setSelectedImage(null);
             setCaption('');
             setPreview(false);
@@ -333,7 +325,8 @@
       );
     }
 
-    ReactDOM.render(<ReceiptCaptioner />, document.getElementById('root'));
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<ReceiptCaptioner />);
   </script>
 </body>
 </html>
