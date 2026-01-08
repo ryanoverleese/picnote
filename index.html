@@ -116,15 +116,22 @@
                   <p class="text-sm font-semibold text-slate-700 block mb-4">
                     Final Image
                   </p>
-                  <div class="bg-slate-50 rounded-lg overflow-hidden">
+                  <div class="bg-slate-50 rounded-lg overflow-hidden select-none" style="user-select: none; -webkit-user-select: none;">
                     <canvas
                       id="finalCanvas"
                       class="w-full h-auto"
+                      style="user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;"
                     ></canvas>
                   </div>
-                  <p class="text-xs text-slate-500 mt-4 text-center font-medium">
-                    Long-press to save to your device
-                  </p>
+                  <button
+                    id="saveBtn"
+                    class="w-full mt-4 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Save Image
+                  </button>
                 </div>
               </div>
             </div>
@@ -159,6 +166,9 @@
         });
 
         clearImageBtn.addEventListener('click', () => this.clearImage());
+
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.addEventListener('click', () => this.saveImage());
       }
 
       handleImageSelect(e) {
@@ -261,6 +271,24 @@
         };
         
         img.src = this.selectedImage;
+      }
+
+      saveImage() {
+        const canvas = document.getElementById('finalCanvas');
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `receipt-${Date.now()}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            this.clearImage();
+          }
+        }, 'image/jpeg', 0.95);
       }
     }
 
