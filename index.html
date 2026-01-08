@@ -1,33 +1,37 @@
-import React, { useState, useRef } from 'react';
-import { Upload, Eye, Download, X } from 'lucide-react';
-
-export default function ReceiptCaptioner() {
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [caption, setCaption] = useState('');
-  const [preview, setPreview] = useState(false);
-  const fileInputRef = useRef(null);
-  const canvasRef = useRef(null);
-
-  const handleImageSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setSelectedImage(event.target.result);
-        setPreview(false);
-        setCaption('');
-      };
-      reader.readAsDataURL(file);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receipt Captioner</title>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/react-dom.production.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
-  };
+  </style>
+</head>
+<body>
+  <div id="root"></div>
 
-  const handleCaptureCamera = async () => {
-    try {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.capture = 'environment';
-      input.onchange = (e) => {
+  <script type="text/babel">
+    const { useState, useRef } = React;
+    const { Upload, Eye, Download, X } = lucide;
+
+    function ReceiptCaptioner() {
+      const [selectedImage, setSelectedImage] = useState(null);
+      const [caption, setCaption] = useState('');
+      const [preview, setPreview] = useState(false);
+      const fileInputRef = useRef(null);
+      const canvasRef = useRef(null);
+
+      const handleImageSelect = (e) => {
         const file = e.target.files?.[0];
         if (file) {
           const reader = new FileReader();
@@ -39,278 +43,302 @@ export default function ReceiptCaptioner() {
           reader.readAsDataURL(file);
         }
       };
-      input.click();
-    } catch (err) {
-      console.log('Camera not available, using file input');
-      fileInputRef.current?.click();
-    }
-  };
 
-  const drawCaptionedImage = (canvas) => {
-    if (!selectedImage || !caption.trim()) return false;
-
-    const img = new Image();
-    img.onload = () => {
-      const ctx = canvas.getContext('2d');
-      canvas.width = img.width;
-      canvas.height = img.height;
-
-      // Draw original image
-      ctx.drawImage(img, 0, 0);
-
-      // Caption styling
-      const fontSize = Math.max(20, img.width / 20);
-      const padding = Math.max(12, img.width / 40);
-      const lineHeight = fontSize * 1.4;
-
-      // Setup text
-      ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-      ctx.fillStyle = 'white';
-      ctx.textAlign = 'left';
-
-      // Calculate text dimensions and wrap
-      const maxWidth = img.width - padding * 2;
-      const words = caption.split(' ');
-      const lines = [];
-      let currentLine = '';
-
-      words.forEach((word) => {
-        const testLine = currentLine + (currentLine ? ' ' : '') + word;
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxWidth && currentLine) {
-          lines.push(currentLine);
-          currentLine = word;
-        } else {
-          currentLine = testLine;
+      const handleCaptureCamera = async () => {
+        try {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'image/*';
+          input.capture = 'environment';
+          input.onchange = (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                setSelectedImage(event.target.result);
+                setPreview(false);
+                setCaption('');
+              };
+              reader.readAsDataURL(file);
+            }
+          };
+          input.click();
+        } catch (err) {
+          console.log('Camera not available, using file input');
+          fileInputRef.current?.click();
         }
-      });
-      if (currentLine) lines.push(currentLine);
+      };
 
-      const textBlockHeight = lines.length * lineHeight + padding * 2;
-      const bgY = img.height - textBlockHeight;
+      const drawCaptionedImage = (canvas) => {
+        if (!selectedImage || !caption.trim()) return false;
 
-      // Draw semi-transparent background
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(0, bgY, img.width, textBlockHeight);
+        const img = new Image();
+        img.onload = () => {
+          const ctx = canvas.getContext('2d');
+          canvas.width = img.width;
+          canvas.height = img.height;
 
-      // Draw text
-      ctx.fillStyle = 'white';
-      lines.forEach((line, index) => {
-        ctx.fillText(
-          line,
-          padding,
-          bgY + padding + (index + 1) * lineHeight - (lineHeight - fontSize) / 2
-        );
-      });
-    };
-    img.src = selectedImage;
-    return true;
-  };
+          // Draw original image
+          ctx.drawImage(img, 0, 0);
 
-  const handlePreview = () => {
-    if (!selectedImage || !caption.trim()) return;
-    const canvas = canvasRef.current;
-    if (canvas) {
-      drawCaptionedImage(canvas);
-      setPreview(true);
-    }
-  };
+          // Caption styling
+          const fontSize = Math.max(20, img.width / 20);
+          const padding = Math.max(12, img.width / 40);
+          const lineHeight = fontSize * 1.4;
 
-  const handleDownload = () => {
-    if (!selectedImage || !caption.trim()) return;
+          // Setup text
+          ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+          ctx.fillStyle = 'white';
+          ctx.textAlign = 'left';
 
-    const canvas = document.createElement('canvas');
-    drawCaptionedImage(canvas);
+          // Calculate text dimensions and wrap
+          const maxWidth = img.width - padding * 2;
+          const words = caption.split(' ');
+          const lines = [];
+          let currentLine = '';
 
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `receipt-${Date.now()}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+          words.forEach((word) => {
+            const testLine = currentLine + (currentLine ? ' ' : '') + word;
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          });
+          if (currentLine) lines.push(currentLine);
 
-        // Reset form
+          const textBlockHeight = lines.length * lineHeight + padding * 2;
+          const bgY = img.height - textBlockHeight;
+
+          // Draw semi-transparent background
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+          ctx.fillRect(0, bgY, img.width, textBlockHeight);
+
+          // Draw text
+          ctx.fillStyle = 'white';
+          lines.forEach((line, index) => {
+            ctx.fillText(
+              line,
+              padding,
+              bgY + padding + (index + 1) * lineHeight - (lineHeight - fontSize) / 2
+            );
+          });
+        };
+        img.src = selectedImage;
+        return true;
+      };
+
+      const handlePreview = () => {
+        if (!selectedImage || !caption.trim()) return;
+        const canvas = canvasRef.current;
+        if (canvas) {
+          drawCaptionedImage(canvas);
+          setPreview(true);
+        }
+      };
+
+      const handleDownload = () => {
+        if (!selectedImage || !caption.trim()) return;
+
+        const canvas = document.createElement('canvas');
+        drawCaptionedImage(canvas);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `receipt-${Date.now()}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            // Reset form
+            setSelectedImage(null);
+            setCaption('');
+            setPreview(false);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+          }
+        }, 'image/jpeg', 0.95);
+      };
+
+      const handleReset = () => {
         setSelectedImage(null);
         setCaption('');
         setPreview(false);
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
-      }
-    }, 'image/jpeg', 0.95);
-  };
+      };
 
-  const handleReset = () => {
-    setSelectedImage(null);
-    setCaption('');
-    setPreview(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
+      const hasContent = selectedImage && caption.trim();
 
-  const hasContent = selectedImage && caption.trim();
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+          {/* Header */}
+          <div className="border-b border-slate-200 bg-white/50 backdrop-blur-sm sticky top-0 z-40">
+            <div className="max-w-2xl mx-auto px-6 py-6">
+              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+                Receipt Captioner
+              </h1>
+              <p className="text-slate-600 mt-1 text-sm font-medium">
+                Add captions to your receipts
+              </p>
+            </div>
+          </div>
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <div className="border-b border-slate-200 bg-white/50 backdrop-blur-sm sticky top-0 z-40">
-        <div className="max-w-2xl mx-auto px-6 py-6">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-            Receipt Captioner
-          </h1>
-          <p className="text-slate-600 mt-1 text-sm font-medium">
-            Add captions to your receipts
-          </p>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-2xl mx-auto px-6 py-8">
-        <div className="space-y-6">
-          {/* Image Upload Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <label className="block mb-4">
-              <span className="text-sm font-semibold text-slate-700 block mb-3">
-                Receipt Photo
-              </span>
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors"
-                >
-                  <Upload size={20} />
-                  Select from Device
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCaptureCamera}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-100 text-slate-900 rounded-lg font-semibold hover:bg-slate-200 transition-colors border border-slate-300"
-                >
-                  <Upload size={20} />
-                  Capture with Camera
-                </button>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageSelect}
-                className="hidden"
-              />
-            </label>
-
-            {selectedImage && (
-              <div className="mt-6 pt-6 border-t border-slate-200">
-                <div className="relative bg-slate-50 rounded-lg overflow-hidden">
-                  <img
-                    src={selectedImage}
-                    alt="Selected receipt"
-                    className="w-full h-auto block"
+          {/* Main Content */}
+          <div className="max-w-2xl mx-auto px-6 py-8">
+            <div className="space-y-6">
+              {/* Image Upload Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <label className="block mb-4">
+                  <span className="text-sm font-semibold text-slate-700 block mb-3">
+                    Receipt Photo
+                  </span>
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors"
+                    >
+                      <Upload size={20} />
+                      Select from Device
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCaptureCamera}
+                      className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-100 text-slate-900 rounded-lg font-semibold hover:bg-slate-200 transition-colors border border-slate-300"
+                    >
+                      <Upload size={20} />
+                      Capture with Camera
+                    </button>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="hidden"
                   />
+                </label>
+
+                {selectedImage && (
+                  <div className="mt-6 pt-6 border-t border-slate-200">
+                    <div className="relative bg-slate-50 rounded-lg overflow-hidden">
+                      <img
+                        src={selectedImage}
+                        alt="Selected receipt"
+                        className="w-full h-auto block"
+                      />
+                      <button
+                        onClick={handleReset}
+                        className="absolute top-3 right-3 bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors shadow-lg"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-3 text-center font-medium">
+                      {Math.round(selectedImage.length / 1024)} KB
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Caption Input Section */}
+              {selectedImage && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                  <label className="block">
+                    <span className="text-sm font-semibold text-slate-700 block mb-3">
+                      Caption Text
+                    </span>
+                    <textarea
+                      value={caption}
+                      onChange={(e) => {
+                        setCaption(e.target.value);
+                        setPreview(false);
+                      }}
+                      placeholder="e.g., Farm supplies - seed corn"
+                      maxLength={200}
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent resize-none"
+                      rows={3}
+                    />
+                    <p className="text-xs text-slate-500 mt-2 text-right font-medium">
+                      {caption.length} / 200
+                    </p>
+                  </label>
+                </div>
+              )}
+
+              {/* Preview and Download Buttons */}
+              {hasContent && (
+                <div className="space-y-3">
                   <button
-                    onClick={handleReset}
-                    className="absolute top-3 right-3 bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors shadow-lg"
+                    onClick={handlePreview}
+                    className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-200 text-slate-900 rounded-lg font-semibold hover:bg-slate-300 transition-colors border border-slate-400"
                   >
-                    <X size={18} />
+                    <Eye size={20} />
+                    Preview
+                  </button>
+                  <button
+                    onClick={handleDownload}
+                    className="w-full flex items-center justify-center gap-3 px-4 py-4 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-sm"
+                  >
+                    <Download size={20} />
+                    Download Captioned Image
                   </button>
                 </div>
-                <p className="text-xs text-slate-500 mt-3 text-center font-medium">
-                  {Math.round(selectedImage.length / 1024)} KB
-                </p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
-          {/* Caption Input Section */}
-          {selectedImage && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <label className="block">
-                <span className="text-sm font-semibold text-slate-700 block mb-3">
-                  Caption Text
-                </span>
-                <textarea
-                  value={caption}
-                  onChange={(e) => {
-                    setCaption(e.target.value);
-                    setPreview(false);
-                  }}
-                  placeholder="e.g., Farm supplies - seed corn"
-                  maxLength={200}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent resize-none"
-                  rows={3}
-                />
-                <p className="text-xs text-slate-500 mt-2 text-right font-medium">
-                  {caption.length} / 200
-                </p>
-              </label>
-            </div>
-          )}
-
-          {/* Preview and Download Buttons */}
-          {hasContent && (
-            <div className="space-y-3">
-              <button
-                onClick={handlePreview}
-                className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-200 text-slate-900 rounded-lg font-semibold hover:bg-slate-300 transition-colors border border-slate-400"
-              >
-                <Eye size={20} />
-                Preview
-              </button>
-              <button
-                onClick={handleDownload}
-                className="w-full flex items-center justify-center gap-3 px-4 py-4 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-sm"
-              >
-                <Download size={20} />
-                Download Captioned Image
-              </button>
+          {/* Preview Modal */}
+          {preview && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-6 border-b border-slate-200 sticky top-0 bg-white">
+                  <h2 className="text-xl font-bold text-slate-900">Preview</h2>
+                  <button
+                    onClick={() => setPreview(false)}
+                    className="text-slate-500 hover:text-slate-700 transition-colors p-1"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="p-6">
+                  <canvas
+                    ref={canvasRef}
+                    className="w-full h-auto rounded-lg"
+                  />
+                  <div className="mt-6 flex gap-3">
+                    <button
+                      onClick={() => setPreview(false)}
+                      className="flex-1 px-4 py-3 bg-slate-200 text-slate-900 rounded-lg font-semibold hover:bg-slate-300 transition-colors"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleDownload}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                    >
+                      <Download size={18} />
+                      Download
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
-      </div>
+      );
+    }
 
-      {/* Preview Modal */}
-      {preview && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-slate-200 sticky top-0 bg-white">
-              <h2 className="text-xl font-bold text-slate-900">Preview</h2>
-              <button
-                onClick={() => setPreview(false)}
-                className="text-slate-500 hover:text-slate-700 transition-colors p-1"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <div className="p-6">
-              <canvas
-                ref={canvasRef}
-                className="w-full h-auto rounded-lg"
-              />
-              <div className="mt-6 flex gap-3">
-                <button
-                  onClick={() => setPreview(false)}
-                  className="flex-1 px-4 py-3 bg-slate-200 text-slate-900 rounded-lg font-semibold hover:bg-slate-300 transition-colors"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={handleDownload}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
-                >
-                  <Download size={18} />
-                  Download
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+    ReactDOM.render(<ReceiptCaptioner />, document.getElementById('root'));
+  </script>
+</body>
+</html>
