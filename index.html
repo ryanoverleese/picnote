@@ -4,73 +4,280 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Receipt Captioner</title>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    * {
-      box-sizing: border-box;
-    }
     body {
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
     }
   </style>
 </head>
 <body>
   <div id="root"></div>
 
-  <script type="text/babel">
-    const { useState, useRef } = React;
-    const { Upload, Eye, Download, X } = window.lucide;
+  <script>
+    class ReceiptCaptioner {
+      constructor() {
+        this.selectedImage = null;
+        this.caption = '';
+        this.preview = false;
+        this.render();
+        this.attachEventListeners();
+      }
 
-    function ReceiptCaptioner() {
-      const [selectedImage, setSelectedImage] = useState(null);
-      const [caption, setCaption] = useState('');
-      const [preview, setPreview] = useState(false);
-      const fileInputRef = useRef(null);
-      const canvasRef = useRef(null);
+      render() {
+        const root = document.getElementById('root');
+        root.innerHTML = `
+          <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+            <!-- Header -->
+            <div class="border-b border-slate-200 bg-white/50 backdrop-blur-sm sticky top-0 z-40">
+              <div class="max-w-2xl mx-auto px-6 py-6">
+                <h1 class="text-3xl font-bold text-slate-900 tracking-tight">
+                  Receipt Captioner
+                </h1>
+                <p class="text-slate-600 mt-1 text-sm font-medium">
+                  Add captions to your receipts
+                </p>
+              </div>
+            </div>
 
-      const handleImageSelect = (e) => {
+            <!-- Main Content -->
+            <div class="max-w-2xl mx-auto px-6 py-8">
+              <div class="space-y-6">
+                <!-- Image Upload Section -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                  <label class="block mb-4">
+                    <span class="text-sm font-semibold text-slate-700 block mb-3">
+                      Receipt Photo
+                    </span>
+                    <div class="space-y-3">
+                      <button
+                        id="selectBtn"
+                        type="button"
+                        class="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors"
+                      >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Select from Device
+                      </button>
+                      <button
+                        id="cameraBtn"
+                        type="button"
+                        class="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-100 text-slate-900 rounded-lg font-semibold hover:bg-slate-200 transition-colors border border-slate-300"
+                      >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Capture with Camera
+                      </button>
+                    </div>
+                    <input
+                      id="fileInput"
+                      type="file"
+                      accept="image/*"
+                      class="hidden"
+                    />
+                  </label>
+
+                  <div id="imagePreview" class="hidden mt-6 pt-6 border-t border-slate-200">
+                    <div class="relative bg-slate-50 rounded-lg overflow-hidden">
+                      <img
+                        id="previewImg"
+                        alt="Selected receipt"
+                        class="w-full h-auto block"
+                      />
+                      <button
+                        id="resetBtn"
+                        class="absolute top-3 right-3 bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors shadow-lg"
+                      >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                      </button>
+                    </div>
+                    <p id="fileSize" class="text-xs text-slate-500 mt-3 text-center font-medium"></p>
+                  </div>
+                </div>
+
+                <!-- Caption Input Section -->
+                <div id="captionSection" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                  <label class="block">
+                    <span class="text-sm font-semibold text-slate-700 block mb-3">
+                      Caption Text
+                    </span>
+                    <textarea
+                      id="captionInput"
+                      placeholder="e.g., Farm supplies - seed corn"
+                      maxlength="200"
+                      class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent resize-none"
+                      rows="3"
+                    ></textarea>
+                    <p class="text-xs text-slate-500 mt-2 text-right font-medium">
+                      <span id="charCount">0</span> / 200
+                    </p>
+                  </label>
+                </div>
+
+                <!-- Buttons Section -->
+                <div id="buttonSection" class="hidden space-y-3">
+                  <button
+                    id="previewBtn"
+                    class="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-200 text-slate-900 rounded-lg font-semibold hover:bg-slate-300 transition-colors border border-slate-400"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                    Preview
+                  </button>
+                  <button
+                    id="downloadBtn"
+                    class="w-full flex items-center justify-center gap-3 px-4 py-4 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-sm"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Download Captioned Image
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Preview Modal -->
+            <div id="previewModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between p-6 border-b border-slate-200 sticky top-0 bg-white">
+                  <h2 class="text-xl font-bold text-slate-900">Preview</h2>
+                  <button
+                    id="closePreviewBtn"
+                    class="text-slate-500 hover:text-slate-700 transition-colors p-1"
+                  >
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div class="p-6">
+                  <canvas
+                    id="previewCanvas"
+                    class="w-full h-auto rounded-lg"
+                  ></canvas>
+                  <div class="mt-6 flex gap-3">
+                    <button
+                      id="backBtn"
+                      class="flex-1 px-4 py-3 bg-slate-200 text-slate-900 rounded-lg font-semibold hover:bg-slate-300 transition-colors"
+                    >
+                      Back
+                    </button>
+                    <button
+                      id="downloadFromPreviewBtn"
+                      class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                      </svg>
+                      Download
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      attachEventListeners() {
+        const fileInput = document.getElementById('fileInput');
+        const selectBtn = document.getElementById('selectBtn');
+        const cameraBtn = document.getElementById('cameraBtn');
+        const captionInput = document.getElementById('captionInput');
+        const resetBtn = document.getElementById('resetBtn');
+        const previewBtn = document.getElementById('previewBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const closePreviewBtn = document.getElementById('closePreviewBtn');
+        const backBtn = document.getElementById('backBtn');
+        const downloadFromPreviewBtn = document.getElementById('downloadFromPreviewBtn');
+
+        selectBtn.addEventListener('click', () => fileInput.click());
+
+        cameraBtn.addEventListener('click', () => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'image/*';
+          input.capture = 'environment';
+          input.addEventListener('change', (e) => this.handleImageSelect(e));
+          input.click();
+        });
+
+        fileInput.addEventListener('change', (e) => this.handleImageSelect(e));
+
+        captionInput.addEventListener('input', (e) => {
+          this.caption = e.target.value;
+          document.getElementById('charCount').textContent = this.caption.length;
+          this.updateUI();
+        });
+
+        resetBtn.addEventListener('click', () => this.handleReset());
+        previewBtn.addEventListener('click', () => this.handlePreview());
+        downloadBtn.addEventListener('click', () => this.handleDownload());
+        closePreviewBtn.addEventListener('click', () => this.closePreview());
+        backBtn.addEventListener('click', () => this.closePreview());
+        downloadFromPreviewBtn.addEventListener('click', () => this.handleDownload());
+      }
+
+      handleImageSelect(e) {
         const file = e.target.files?.[0];
         if (file) {
           const reader = new FileReader();
           reader.onload = (event) => {
-            setSelectedImage(event.target.result);
-            setPreview(false);
-            setCaption('');
+            this.selectedImage = event.target.result;
+            this.caption = '';
+            this.updateUI();
           };
           reader.readAsDataURL(file);
         }
-      };
+      }
 
-      const handleCaptureCamera = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.capture = 'environment';
-        input.onchange = (e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              setSelectedImage(event.target.result);
-              setPreview(false);
-              setCaption('');
-            };
-            reader.readAsDataURL(file);
+      handleReset() {
+        this.selectedImage = null;
+        this.caption = '';
+        document.getElementById('fileInput').value = '';
+        this.updateUI();
+      }
+
+      updateUI() {
+        const imagePreview = document.getElementById('imagePreview');
+        const captionSection = document.getElementById('captionSection');
+        const buttonSection = document.getElementById('buttonSection');
+        const captionInput = document.getElementById('captionInput');
+        const charCount = document.getElementById('charCount');
+
+        if (this.selectedImage) {
+          document.getElementById('previewImg').src = this.selectedImage;
+          document.getElementById('fileSize').textContent = Math.round(this.selectedImage.length / 1024) + ' KB';
+          imagePreview.classList.remove('hidden');
+          captionSection.classList.remove('hidden');
+          captionInput.value = this.caption;
+          charCount.textContent = this.caption.length;
+
+          if (this.selectedImage && this.caption.trim()) {
+            buttonSection.classList.remove('hidden');
+          } else {
+            buttonSection.classList.add('hidden');
           }
-        };
-        input.click();
-      };
+        } else {
+          imagePreview.classList.add('hidden');
+          captionSection.classList.add('hidden');
+          buttonSection.classList.add('hidden');
+          captionInput.value = '';
+          charCount.textContent = '0';
+        }
+      }
 
-      const drawCaptionedImage = (canvas) => {
-        if (!selectedImage || !caption.trim()) return false;
+      drawCaptionedImage(canvas) {
+        if (!this.selectedImage || !this.caption.trim()) return false;
 
         const img = new Image();
         img.onload = () => {
@@ -89,7 +296,7 @@
           ctx.textAlign = 'left';
 
           const maxWidth = img.width - padding * 2;
-          const words = caption.split(' ');
+          const words = this.caption.split(' ');
           const lines = [];
           let currentLine = '';
 
@@ -120,213 +327,53 @@
             );
           });
         };
-        img.src = selectedImage;
-        return true;
-      };
+        img.src = this.selectedImage;
+      }
 
-      const handlePreview = () => {
-        if (!selectedImage || !caption.trim()) return;
-        const canvas = canvasRef.current;
-        if (canvas) {
-          drawCaptionedImage(canvas);
-          setPreview(true);
-        }
-      };
+      handlePreview() {
+        if (!this.selectedImage || !this.caption.trim()) return;
+        const canvas = document.getElementById('previewCanvas');
+        this.drawCaptionedImage(canvas);
+        document.getElementById('previewModal').classList.remove('hidden');
+      }
 
-      const handleDownload = () => {
-        if (!selectedImage || !caption.trim()) return;
+      closePreview() {
+        document.getElementById('previewModal').classList.add('hidden');
+      }
+
+      handleDownload() {
+        if (!this.selectedImage || !this.caption.trim()) return;
 
         const canvas = document.createElement('canvas');
-        drawCaptionedImage(canvas);
+        this.drawCaptionedImage(canvas);
 
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `receipt-${Date.now()}.jpg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+        setTimeout(() => {
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `receipt-${Date.now()}.jpg`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
 
-            setSelectedImage(null);
-            setCaption('');
-            setPreview(false);
-            if (fileInputRef.current) {
-              fileInputRef.current.value = '';
+              this.handleReset();
+              this.closePreview();
             }
-          }
-        }, 'image/jpeg', 0.95);
-      };
-
-      const handleReset = () => {
-        setSelectedImage(null);
-        setCaption('');
-        setPreview(false);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      };
-
-      const hasContent = selectedImage && caption.trim();
-
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-          <div className="border-b border-slate-200 bg-white/50 backdrop-blur-sm sticky top-0 z-40">
-            <div className="max-w-2xl mx-auto px-6 py-6">
-              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-                Receipt Captioner
-              </h1>
-              <p className="text-slate-600 mt-1 text-sm font-medium">
-                Add captions to your receipts
-              </p>
-            </div>
-          </div>
-
-          <div className="max-w-2xl mx-auto px-6 py-8">
-            <div className="space-y-6">
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <label className="block mb-4">
-                  <span className="text-sm font-semibold text-slate-700 block mb-3">
-                    Receipt Photo
-                  </span>
-                  <div className="space-y-3">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors"
-                    >
-                      <Upload size={20} />
-                      Select from Device
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCaptureCamera}
-                      className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-100 text-slate-900 rounded-lg font-semibold hover:bg-slate-200 transition-colors border border-slate-300"
-                    >
-                      <Upload size={20} />
-                      Capture with Camera
-                    </button>
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageSelect}
-                    className="hidden"
-                  />
-                </label>
-
-                {selectedImage && (
-                  <div className="mt-6 pt-6 border-t border-slate-200">
-                    <div className="relative bg-slate-50 rounded-lg overflow-hidden">
-                      <img
-                        src={selectedImage}
-                        alt="Selected receipt"
-                        className="w-full h-auto block"
-                      />
-                      <button
-                        onClick={handleReset}
-                        className="absolute top-3 right-3 bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors shadow-lg"
-                      >
-                        <X size={18} />
-                      </button>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-3 text-center font-medium">
-                      {Math.round(selectedImage.length / 1024)} KB
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {selectedImage && (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                  <label className="block">
-                    <span className="text-sm font-semibold text-slate-700 block mb-3">
-                      Caption Text
-                    </span>
-                    <textarea
-                      value={caption}
-                      onChange={(e) => {
-                        setCaption(e.target.value);
-                        setPreview(false);
-                      }}
-                      placeholder="e.g., Farm supplies - seed corn"
-                      maxLength={200}
-                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent resize-none"
-                      rows={3}
-                    />
-                    <p className="text-xs text-slate-500 mt-2 text-right font-medium">
-                      {caption.length} / 200
-                    </p>
-                  </label>
-                </div>
-              )}
-
-              {hasContent && (
-                <div className="space-y-3">
-                  <button
-                    onClick={handlePreview}
-                    className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-200 text-slate-900 rounded-lg font-semibold hover:bg-slate-300 transition-colors border border-slate-400"
-                  >
-                    <Eye size={20} />
-                    Preview
-                  </button>
-                  <button
-                    onClick={handleDownload}
-                    className="w-full flex items-center justify-center gap-3 px-4 py-4 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-sm"
-                  >
-                    <Download size={20} />
-                    Download Captioned Image
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {preview && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between p-6 border-b border-slate-200 sticky top-0 bg-white">
-                  <h2 className="text-xl font-bold text-slate-900">Preview</h2>
-                  <button
-                    onClick={() => setPreview(false)}
-                    className="text-slate-500 hover:text-slate-700 transition-colors p-1"
-                  >
-                    <X size={24} />
-                  </button>
-                </div>
-                <div className="p-6">
-                  <canvas
-                    ref={canvasRef}
-                    className="w-full h-auto rounded-lg"
-                  />
-                  <div className="mt-6 flex gap-3">
-                    <button
-                      onClick={() => setPreview(false)}
-                      className="flex-1 px-4 py-3 bg-slate-200 text-slate-900 rounded-lg font-semibold hover:bg-slate-300 transition-colors"
-                    >
-                      Back
-                    </button>
-                    <button
-                      onClick={handleDownload}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
-                    >
-                      <Download size={18} />
-                      Download
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
+          }, 'image/jpeg', 0.95);
+        }, 100);
+      }
     }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<ReceiptCaptioner />);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        new ReceiptCaptioner();
+      });
+    } else {
+      new ReceiptCaptioner();
+    }
   </script>
 </body>
 </html>
