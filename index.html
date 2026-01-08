@@ -6,6 +6,7 @@
   <title>Receipt Captioner</title>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.min.js"></script>
   <style>
@@ -180,7 +181,6 @@
 
       return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-          {/* Header */}
           <div className="border-b border-slate-200 bg-white/50 backdrop-blur-sm sticky top-0 z-40">
             <div className="max-w-2xl mx-auto px-6 py-6">
               <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
@@ -192,10 +192,8 @@
             </div>
           </div>
 
-          {/* Main Content */}
           <div className="max-w-2xl mx-auto px-6 py-8">
             <div className="space-y-6">
-              {/* Image Upload Section */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <label className="block mb-4">
                   <span className="text-sm font-semibold text-slate-700 block mb-3">
@@ -250,7 +248,6 @@
                 )}
               </div>
 
-              {/* Caption Input Section */}
               {selectedImage && (
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                   <label className="block">
@@ -275,7 +272,6 @@
                 </div>
               )}
 
-              {/* Preview and Download Buttons */}
               {hasContent && (
                 <div className="space-y-3">
                   <button
@@ -297,7 +293,6 @@
             </div>
           </div>
 
-          {/* Preview Modal */}
           {preview && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
