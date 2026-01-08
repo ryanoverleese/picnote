@@ -148,7 +148,7 @@
           input.type = 'file';
           input.accept = 'image/*';
           input.capture = 'environment';
-          input.addEventListener('change', (e) => this.handleImageSelect(e));
+          input.addEventListener('change', (e) => this.handleImageSelect(e), { once: true });
           input.click();
         });
 
