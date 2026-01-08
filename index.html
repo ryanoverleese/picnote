@@ -21,7 +21,7 @@
       constructor() {
         this.selectedImage = null;
         this.caption = '';
-        this.preview = false;
+        this.finalImageData = null;
         this.render();
         this.attachEventListeners();
       }
@@ -139,7 +139,7 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                     </svg>
-                    Download Captioned Image
+                    Get Final Image
                   </button>
                 </div>
               </div>
@@ -171,14 +171,46 @@
                     >
                       Back
                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ready to Save Modal -->
+            <div id="readyModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between p-6 border-b border-slate-200 sticky top-0 bg-white">
+                  <h2 class="text-xl font-bold text-slate-900">Ready to Save</h2>
+                  <button
+                    id="closeReadyBtn"
+                    class="text-slate-500 hover:text-slate-700 transition-colors p-1"
+                  >
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div class="p-6">
+                  <p class="text-slate-700 mb-4 text-center font-medium">
+                    Long-press the image to save to your Photos
+                  </p>
+                  <img
+                    id="readyImage"
+                    alt="Ready to save"
+                    class="w-full h-auto rounded-lg mb-6"
+                  />
+                  <div class="flex gap-3">
                     <button
-                      id="downloadFromPreviewBtn"
-                      class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                      id="backFromReadyBtn"
+                      class="flex-1 px-4 py-3 bg-slate-200 text-slate-900 rounded-lg font-semibold hover:bg-slate-300 transition-colors"
                     >
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                      </svg>
-                      Download
+                      Back
+                    </button>
+                    <button
+                      id="startOverBtn"
+                      class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                    >
+                      Start Over
                     </button>
                   </div>
                 </div>
@@ -198,7 +230,9 @@
         const downloadBtn = document.getElementById('downloadBtn');
         const closePreviewBtn = document.getElementById('closePreviewBtn');
         const backBtn = document.getElementById('backBtn');
-        const downloadFromPreviewBtn = document.getElementById('downloadFromPreviewBtn');
+        const closeReadyBtn = document.getElementById('closeReadyBtn');
+        const backFromReadyBtn = document.getElementById('backFromReadyBtn');
+        const startOverBtn = document.getElementById('startOverBtn');
 
         selectBtn.addEventListener('click', () => fileInput.click());
 
@@ -221,10 +255,12 @@
 
         resetBtn.addEventListener('click', () => this.handleReset());
         previewBtn.addEventListener('click', () => this.handlePreview());
-        downloadBtn.addEventListener('click', () => this.handleDownload());
+        downloadBtn.addEventListener('click', () => this.showReady());
         closePreviewBtn.addEventListener('click', () => this.closePreview());
         backBtn.addEventListener('click', () => this.closePreview());
-        downloadFromPreviewBtn.addEventListener('click', () => this.handleDownload());
+        closeReadyBtn.addEventListener('click', () => this.closeReady());
+        backFromReadyBtn.addEventListener('click', () => this.closeReady());
+        startOverBtn.addEventListener('click', () => this.handleReset());
       }
 
       handleImageSelect(e) {
@@ -243,7 +279,10 @@
       handleReset() {
         this.selectedImage = null;
         this.caption = '';
+        this.finalImageData = null;
         document.getElementById('fileInput').value = '';
+        this.closeReady();
+        this.closePreview();
         this.updateUI();
       }
 
@@ -341,29 +380,22 @@
         document.getElementById('previewModal').classList.add('hidden');
       }
 
-      handleDownload() {
+      showReady() {
         if (!this.selectedImage || !this.caption.trim()) return;
 
         const canvas = document.createElement('canvas');
         this.drawCaptionedImage(canvas);
 
         setTimeout(() => {
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = `receipt-${Date.now()}.jpg`;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              URL.revokeObjectURL(url);
-
-              this.handleReset();
-              this.closePreview();
-            }
-          }, 'image/jpeg', 0.95);
+          this.finalImageData = canvas.toDataURL('image/jpeg', 0.95);
+          document.getElementById('readyImage').src = this.finalImageData;
+          document.getElementById('previewModal').classList.add('hidden');
+          document.getElementById('readyModal').classList.remove('hidden');
         }, 100);
+      }
+
+      closeReady() {
+        document.getElementById('readyModal').classList.add('hidden');
       }
     }
 
