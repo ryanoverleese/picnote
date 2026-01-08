@@ -11,10 +11,13 @@
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     }
-    #finalCanvas {
+    #liveCanvas {
       display: block;
       max-width: 100%;
       height: auto;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
   </style>
 </head>
@@ -111,27 +114,17 @@
                   </button>
                 </div>
 
-                <!-- Final Image Section -->
+                <!-- Live Final Image Section -->
                 <div id="finalImageSection" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                   <p class="text-sm font-semibold text-slate-700 block mb-4">
                     Final Image
                   </p>
-                  <div class="bg-slate-50 rounded-lg overflow-hidden select-none" style="user-select: none; -webkit-user-select: none;">
+                  <div class="bg-slate-50 rounded-lg overflow-hidden">
                     <canvas
-                      id="finalCanvas"
+                      id="liveCanvas"
                       class="w-full h-auto"
-                      style="user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;"
                     ></canvas>
                   </div>
-                  <button
-                    id="saveBtn"
-                    class="w-full mt-4 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                    </svg>
-                    Save Image
-                  </button>
                 </div>
               </div>
             </div>
@@ -145,6 +138,7 @@
         const cameraBtn = document.getElementById('cameraBtn');
         const captionInput = document.getElementById('captionInput');
         const clearImageBtn = document.getElementById('clearImageBtn');
+        const liveCanvas = document.getElementById('liveCanvas');
 
         selectBtn.addEventListener('click', () => fileInput.click());
 
@@ -162,13 +156,32 @@
         captionInput.addEventListener('input', (e) => {
           this.caption = e.target.value;
           document.getElementById('charCount').textContent = this.caption.length;
-          this.updateFinalImage();
+          this.updateLiveImage();
         });
 
         clearImageBtn.addEventListener('click', () => this.clearImage());
 
-        const saveBtn = document.getElementById('saveBtn');
-        saveBtn.addEventListener('click', () => this.saveImage());
+        // Long press to save
+        liveCanvas.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          this.saveImage();
+        });
+
+        // Touch long press for mobile
+        let longPressTimer;
+        liveCanvas.addEventListener('touchstart', () => {
+          longPressTimer = setTimeout(() => {
+            this.saveImage();
+          }, 500);
+        });
+
+        liveCanvas.addEventListener('touchend', () => {
+          clearTimeout(longPressTimer);
+        });
+
+        liveCanvas.addEventListener('touchmove', () => {
+          clearTimeout(longPressTimer);
+        });
       }
 
       handleImageSelect(e) {
@@ -179,7 +192,7 @@
             this.selectedImage = event.target.result;
             this.caption = '';
             this.updateUI();
-            this.updateFinalImage();
+            this.updateLiveImage();
           };
           reader.readAsDataURL(file);
         }
@@ -210,7 +223,7 @@
         }
       }
 
-      updateFinalImage() {
+      updateLiveImage() {
         const finalImageSection = document.getElementById('finalImageSection');
         
         if (!this.selectedImage || !this.caption.trim()) {
@@ -219,7 +232,7 @@
         }
 
         finalImageSection.classList.remove('hidden');
-        const canvas = document.getElementById('finalCanvas');
+        const canvas = document.getElementById('liveCanvas');
         const img = new Image();
         
         img.onload = () => {
@@ -274,21 +287,75 @@
       }
 
       saveImage() {
-        const canvas = document.getElementById('finalCanvas');
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `receipt-${Date.now()}.jpg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+        if (!this.selectedImage || !this.caption.trim()) return;
 
-            this.clearImage();
-          }
-        }, 'image/jpeg', 0.95);
+        const canvas = document.createElement('canvas');
+        const img = new Image();
+        
+        img.onload = () => {
+          const ctx = canvas.getContext('2d');
+          canvas.width = img.width;
+          canvas.height = img.height;
+
+          ctx.drawImage(img, 0, 0);
+
+          const fontSize = Math.max(20, img.width / 20);
+          const padding = Math.max(12, img.width / 40);
+          const lineHeight = fontSize * 1.4;
+
+          ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+          ctx.fillStyle = 'white';
+          ctx.textAlign = 'left';
+
+          const maxWidth = img.width - padding * 2;
+          const words = this.caption.split(' ');
+          const lines = [];
+          let currentLine = '';
+
+          words.forEach((word) => {
+            const testLine = currentLine + (currentLine ? ' ' : '') + word;
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          });
+          if (currentLine) lines.push(currentLine);
+
+          const textBlockHeight = lines.length * lineHeight + padding * 2;
+          const bgY = img.height - textBlockHeight;
+
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+          ctx.fillRect(0, bgY, img.width, textBlockHeight);
+
+          ctx.fillStyle = 'white';
+          lines.forEach((line, index) => {
+            ctx.fillText(
+              line,
+              padding,
+              bgY + padding + (index + 1) * lineHeight - (lineHeight - fontSize) / 2
+            );
+          });
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `receipt-${Date.now()}.jpg`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+
+              this.clearImage();
+            }
+          }, 'image/jpeg', 0.95);
+        };
+        
+        img.src = this.selectedImage;
       }
     }
 
