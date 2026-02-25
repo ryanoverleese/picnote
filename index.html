@@ -224,6 +224,52 @@
         }
       }
 
+      drawCaptionOnCanvas(ctx, img, canvas) {
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        ctx.drawImage(img, 0, 0);
+
+        const fontSize = Math.max(20, img.width / 20);
+        const padding = Math.max(12, img.width / 40);
+        const lineHeight = fontSize * 1.4;
+
+        ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+        ctx.textAlign = 'left';
+
+        const maxWidth = img.width - padding * 2;
+        const words = this.caption.split(' ');
+        const lines = [];
+        let currentLine = '';
+
+        words.forEach((word) => {
+          const testLine = currentLine + (currentLine ? ' ' : '') + word;
+          const metrics = ctx.measureText(testLine);
+          if (metrics.width > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        });
+        if (currentLine) lines.push(currentLine);
+
+        const textBlockHeight = lines.length * lineHeight + padding * 2;
+
+        // Draw at TOP of image
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, img.width, textBlockHeight);
+
+        ctx.fillStyle = 'white';
+        lines.forEach((line, index) => {
+          ctx.fillText(
+            line,
+            padding,
+            padding + (index + 1) * lineHeight - (lineHeight - fontSize) / 2
+          );
+        });
+      }
+
       updateLiveImage() {
         const finalImageSection = document.getElementById('finalImageSection');
         
@@ -238,50 +284,7 @@
         
         img.onload = () => {
           const ctx = canvas.getContext('2d');
-          canvas.width = img.width;
-          canvas.height = img.height;
-
-          ctx.drawImage(img, 0, 0);
-
-          const fontSize = Math.max(20, img.width / 20);
-          const padding = Math.max(12, img.width / 40);
-          const lineHeight = fontSize * 1.4;
-
-          ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-          ctx.fillStyle = 'white';
-          ctx.textAlign = 'left';
-
-          const maxWidth = img.width - padding * 2;
-          const words = this.caption.split(' ');
-          const lines = [];
-          let currentLine = '';
-
-          words.forEach((word) => {
-            const testLine = currentLine + (currentLine ? ' ' : '') + word;
-            const metrics = ctx.measureText(testLine);
-            if (metrics.width > maxWidth && currentLine) {
-              lines.push(currentLine);
-              currentLine = word;
-            } else {
-              currentLine = testLine;
-            }
-          });
-          if (currentLine) lines.push(currentLine);
-
-          const textBlockHeight = lines.length * lineHeight + padding * 2;
-          const bgY = img.height - textBlockHeight;
-
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-          ctx.fillRect(0, bgY, img.width, textBlockHeight);
-
-          ctx.fillStyle = 'white';
-          lines.forEach((line, index) => {
-            ctx.fillText(
-              line,
-              padding,
-              bgY + padding + (index + 1) * lineHeight - (lineHeight - fontSize) / 2
-            );
-          });
+          this.drawCaptionOnCanvas(ctx, img, canvas);
         };
         
         img.src = this.selectedImage;
@@ -295,50 +298,7 @@
         
         img.onload = () => {
           const ctx = canvas.getContext('2d');
-          canvas.width = img.width;
-          canvas.height = img.height;
-
-          ctx.drawImage(img, 0, 0);
-
-          const fontSize = Math.max(20, img.width / 20);
-          const padding = Math.max(12, img.width / 40);
-          const lineHeight = fontSize * 1.4;
-
-          ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-          ctx.fillStyle = 'white';
-          ctx.textAlign = 'left';
-
-          const maxWidth = img.width - padding * 2;
-          const words = this.caption.split(' ');
-          const lines = [];
-          let currentLine = '';
-
-          words.forEach((word) => {
-            const testLine = currentLine + (currentLine ? ' ' : '') + word;
-            const metrics = ctx.measureText(testLine);
-            if (metrics.width > maxWidth && currentLine) {
-              lines.push(currentLine);
-              currentLine = word;
-            } else {
-              currentLine = testLine;
-            }
-          });
-          if (currentLine) lines.push(currentLine);
-
-          const textBlockHeight = lines.length * lineHeight + padding * 2;
-          const bgY = img.height - textBlockHeight;
-
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-          ctx.fillRect(0, bgY, img.width, textBlockHeight);
-
-          ctx.fillStyle = 'white';
-          lines.forEach((line, index) => {
-            ctx.fillText(
-              line,
-              padding,
-              bgY + padding + (index + 1) * lineHeight - (lineHeight - fontSize) / 2
-            );
-          });
+          this.drawCaptionOnCanvas(ctx, img, canvas);
 
           canvas.toBlob((blob) => {
             if (blob) {
