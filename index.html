@@ -393,49 +393,67 @@
 
         this.saving = true;
         const generation = ++this.saveGeneration;
-        this.setStatus('saveStatus', 'Saving image…', false);
-
-        const canvas = document.createElement('canvas');
-        const img = new Image();
-        const stillCurrent = () => this.saving && this.saveGeneration === generation;
+        let settled = false;
+        const current = () => this.saveGeneration === generation && !settled;
         const finishError = () => {
-          if (!stillCurrent()) return;
+          if (!current()) return;
+          settled = true;
           this.saving = false;
-          this.setStatus('saveStatus', 'Could not save the image.', true);
-        };
-
-        img.onload = () => {
-          if (!stillCurrent()) return;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            finishError();
-            return;
+          try {
+            this.setStatus('saveStatus', 'Could not save the image.', true);
+          } catch (e) {
+            // The lock is already released. A status update must not keep save stuck.
           }
-          this.drawCaptionOnCanvas(ctx, img, canvas);
-
-          canvas.toBlob((blob) => {
-            if (!stillCurrent()) return;
-            this.saving = false;
-            if (!blob) {
-              this.setStatus('saveStatus', 'Could not save the image.', true);
-              return;
-            }
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `receipt-${Date.now()}.jpg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-            this.setStatus('saveStatus', '', false);
-            this.clearImage();
-          }, 'image/jpeg', 0.95);
         };
-        img.onerror = finishError;
+        const finishSuccess = () => {
+          if (!current()) return;
+          settled = true;
+          this.clearImage();
+        };
 
-        img.src = this.selectedImage;
+        try {
+          this.setStatus('saveStatus', 'Saving image…', false);
+          const canvas = document.createElement('canvas');
+          const img = new Image();
+
+          img.onload = () => {
+            if (!current()) return;
+            try {
+              const ctx = canvas.getContext('2d');
+              if (!ctx) {
+                finishError();
+                return;
+              }
+              this.drawCaptionOnCanvas(ctx, img, canvas);
+              canvas.toBlob((blob) => {
+                if (!current()) return;
+                try {
+                  if (!blob) {
+                    finishError();
+                    return;
+                  }
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `receipt-${Date.now()}.jpg`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                  finishSuccess();
+                } catch (e) {
+                  finishError();
+                }
+              }, 'image/jpeg', 0.95);
+            } catch (e) {
+              finishError();
+            }
+          };
+          img.onerror = () => finishError();
+          img.src = this.selectedImage;
+        } catch (e) {
+          finishError();
+        }
       }
     }
 
