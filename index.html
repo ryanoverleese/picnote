@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Receipt Captioner</title>
+  <meta name="description" content="Add a caption to a photo on this device.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
@@ -19,6 +26,14 @@
       user-select: none;
       -webkit-touch-callout: none;
     }
+    .status-line {
+      margin: 0.75rem 0;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #475569;
+    }
+    .status-line.status-error { color: #dc2626; }
+    .status-line[hidden] { display: none; }
   </style>
 </head>
 <body>
@@ -29,8 +44,33 @@
       constructor() {
         this.selectedImage = null;
         this.caption = '';
+        this.saving = false;
+        this.readGeneration = 0;
+        this.saveGeneration = 0;
         this.render();
         this.attachEventListeners();
+      }
+
+      setStatus(id, message, isError) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = message || '';
+        el.hidden = !message;
+        el.classList.toggle('status-error', Boolean(message) && isError);
+        el.setAttribute('role', isError && message ? 'alert' : 'status');
+        el.setAttribute('aria-live', isError && message ? 'assertive' : 'polite');
+        if (message) el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
+
+      setBusy(busy) {
+        ['selectBtn', 'cameraBtn'].forEach((id) => {
+          const btn = document.getElementById(id);
+          if (!btn) return;
+          btn.disabled = busy;
+          btn.setAttribute('aria-busy', busy ? 'true' : 'false');
+        });
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput) fileInput.disabled = busy;
       }
 
       render() {
@@ -62,9 +102,9 @@
                       <button
                         id="selectBtn"
                         type="button"
-                        class="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors"
+                        class="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors disabled:opacity-60"
                       >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                         </svg>
                         Select from Device
@@ -72,20 +112,23 @@
                       <button
                         id="cameraBtn"
                         type="button"
-                        class="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-100 text-slate-900 rounded-lg font-semibold hover:bg-slate-200 transition-colors border border-slate-300"
+                        class="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-100 text-slate-900 rounded-lg font-semibold hover:bg-slate-200 transition-colors border border-slate-300 disabled:opacity-60"
                       >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
                         </svg>
                         Capture with Camera
                       </button>
                     </div>
+                    <p id="statusMessage" class="status-line" role="status" aria-live="polite" hidden></p>
                     <input
                       id="fileInput"
                       type="file"
                       accept="image/*"
                       class="hidden"
+                      tabindex="-1"
+                      aria-hidden="true"
                     />
                   </label>
                 </div>
@@ -109,6 +152,7 @@
                   </label>
                   <button
                     id="clearImageBtn"
+                    type="button"
                     class="w-full mt-4 px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors text-sm"
                   >
                     Clear & Start Over
@@ -120,10 +164,13 @@
                   <p class="text-sm font-semibold text-slate-700 block mb-4">
                     Final Image
                   </p>
+                  <p id="saveStatus" class="status-line" role="status" aria-live="polite" hidden></p>
                   <div class="bg-slate-50 rounded-lg overflow-hidden">
                     <canvas
                       id="liveCanvas"
                       class="w-full h-auto"
+                      role="img"
+                      aria-label="Preview of the photo with your caption"
                     ></canvas>
                   </div>
                 </div>
@@ -187,22 +234,64 @@
 
       handleImageSelect(e) {
         const file = e.target.files?.[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            this.selectedImage = event.target.result;
+        if (!file) return;
+
+        const generation = ++this.readGeneration;
+        const fail = (message) => {
+          if (generation !== this.readGeneration) return;
+          e.target.value = '';
+          this.setBusy(false);
+          this.setStatus('statusMessage', message, true);
+        };
+
+        if (!file.type || !file.type.startsWith('image/')) {
+          fail('That file is not a photo. Choose an image.');
+          return;
+        }
+
+        this.setBusy(true);
+        this.setStatus('statusMessage', 'Reading photo…', false);
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (generation !== this.readGeneration) return;
+          const result = event.target && event.target.result;
+          if (typeof result !== 'string' || !result) {
+            fail('Could not read that photo. Try another file.');
+            return;
+          }
+          const img = new Image();
+          img.onload = () => {
+            if (generation !== this.readGeneration) return;
+            this.selectedImage = result;
             this.caption = '';
+            this.setBusy(false);
+            this.setStatus('statusMessage', '', false);
             this.updateUI();
             this.updateLiveImage();
           };
-          reader.readAsDataURL(file);
-        }
+          img.onerror = () => {
+            fail('Could not open that photo. Try another file.');
+          };
+          img.src = result;
+        };
+        reader.onerror = () => {
+          fail('Could not read that photo. Try another file.');
+        };
+        reader.readAsDataURL(file);
       }
 
       clearImage() {
+        this.readGeneration += 1;
+        this.saveGeneration += 1;
+        this.saving = false;
         this.selectedImage = null;
         this.caption = '';
-        document.getElementById('fileInput').value = '';
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput) fileInput.value = '';
+        this.setBusy(false);
+        this.setStatus('statusMessage', '', false);
+        this.setStatus('saveStatus', '', false);
         this.updateUI();
       }
 
@@ -281,42 +370,90 @@
         finalImageSection.classList.remove('hidden');
         const canvas = document.getElementById('liveCanvas');
         const img = new Image();
-        
+
         img.onload = () => {
           const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            finalImageSection.classList.add('hidden');
+            this.setStatus('statusMessage', 'Could not open that photo. Try another file.', true);
+            return;
+          }
           this.drawCaptionOnCanvas(ctx, img, canvas);
         };
-        
+        img.onerror = () => {
+          finalImageSection.classList.add('hidden');
+          this.setStatus('statusMessage', 'Could not open that photo. Try another file.', true);
+        };
+
         img.src = this.selectedImage;
       }
 
       saveImage() {
-        if (!this.selectedImage || !this.caption.trim()) return;
+        if (!this.selectedImage || !this.caption.trim() || this.saving) return;
 
-        const canvas = document.createElement('canvas');
-        const img = new Image();
-        
-        img.onload = () => {
-          const ctx = canvas.getContext('2d');
-          this.drawCaptionOnCanvas(ctx, img, canvas);
-
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = `receipt-${Date.now()}.jpg`;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              URL.revokeObjectURL(url);
-
-              this.clearImage();
-            }
-          }, 'image/jpeg', 0.95);
+        this.saving = true;
+        const generation = ++this.saveGeneration;
+        let settled = false;
+        const current = () => this.saveGeneration === generation && !settled;
+        const finishError = () => {
+          if (!current()) return;
+          settled = true;
+          this.saving = false;
+          try {
+            this.setStatus('saveStatus', 'Could not save the image.', true);
+          } catch (e) {
+            // The lock is already released. A status update must not keep save stuck.
+          }
         };
-        
-        img.src = this.selectedImage;
+        const finishSuccess = () => {
+          if (!current()) return;
+          settled = true;
+          this.clearImage();
+        };
+
+        try {
+          this.setStatus('saveStatus', 'Saving image…', false);
+          const canvas = document.createElement('canvas');
+          const img = new Image();
+
+          img.onload = () => {
+            if (!current()) return;
+            try {
+              const ctx = canvas.getContext('2d');
+              if (!ctx) {
+                finishError();
+                return;
+              }
+              this.drawCaptionOnCanvas(ctx, img, canvas);
+              canvas.toBlob((blob) => {
+                if (!current()) return;
+                try {
+                  if (!blob) {
+                    finishError();
+                    return;
+                  }
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `receipt-${Date.now()}.jpg`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                  finishSuccess();
+                } catch (e) {
+                  finishError();
+                }
+              }, 'image/jpeg', 0.95);
+            } catch (e) {
+              finishError();
+            }
+          };
+          img.onerror = () => finishError();
+          img.src = this.selectedImage;
+        } catch (e) {
+          finishError();
+        }
       }
     }
 
